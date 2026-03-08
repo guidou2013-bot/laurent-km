@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laurent' apps</title>
+<meta name="theme-color" content="#111111">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Laurent KM">
+<link rel="manifest" href="manifest.json">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f2f2f2; color: #111;
+  min-height: 100vh; padding-bottom: 90px;
+}
+
+/* ── VUES ── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── BARRE DE TITRE ── */
+.title-bar {
+  background: #111; color: #fff;
+  padding: 0 20px; height: 64px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 20px; font-weight: 800;
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-btn {
+  background: rgba(255,255,255,0.15); border: none; color: #fff;
+  height: 44px; padding: 0 16px; border-radius: 8px;
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.nav-btn:active { background: rgba(255,255,255,0.28); }
+.back-btn {
+  background: none; border: none; color: #fff;
+  font-size: 30px; width: 44px; height: 44px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; margin-left: -8px; line-height: 1;
+}
+.back-btn:active { background: rgba(255,255,255,0.15); }
+
+/* ── SECTION ── */
+.section { background: #fff; margin-bottom: 10px; padding: 20px 16px; }
+
+/* ── CHAMPS ── */
+.field { margin-bottom: 14px; position: relative; }
+.field label { display: block; font-size: 14px; font-weight: 700; color: #444; margin-bottom: 6px; }
+.field input[type="text"],
+.field input[type="date"],
+.field input[type="time"],
+.field input[type="number"] {
+  width: 100%; padding: 0 16px; height: 56px;
+  border: 2px solid #ddd; border-radius: 10px;
+  font-size: 18px; color: #111; background: #fafafa;
+  font-family: inherit; -webkit-appearance: none; outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus { border-color: #111; background: #fff; }
+.field input.error { border-color: #e00; }
+
+/* ── AUTOCOMPLETE ── */
+.ac-wrap { position: relative; }
+.ac-dropdown {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: #fff; border: 2px solid #111; border-radius: 12px;
+  overflow: hidden; z-index: 50; box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  max-height: 280px; overflow-y: auto;
+}
+.ac-dropdown.open { display: block; }
+.ac-item {
+  padding: 14px 18px; font-size: 17px; font-weight: 500; color: #111;
+  cursor: pointer; border-bottom: 1px solid #f0f0f0; min-height: 52px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ac-item:last-child { border-bottom: none; }
+.ac-item:active { background: #f5f5f5; }
+.ac-item-star { font-size: 11px; color: #aaa; flex-shrink: 0; }
+.ac-item-star.used { color: #f5a623; }
+.ac-no-result { padding: 16px 18px; font-size: 15px; color: #aaa; text-align: center; }
+
+/* ── KM ── */
+.km-display {
+  height: 56px; border: 2px solid #e0e0e0; border-radius: 10px;
+  background: #f5f5f5; display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 900; color: #111;
+}
+.km-display.loading { color: #bbb; font-size: 16px; font-weight: 400; }
+.km-display.ok  { border-color: #2a9d2a; }
+.km-display.err { border-color: #e00; }
+.km-status { font-size: 13px; margin-top: 6px; min-height: 18px; color: #888; text-align: center; }
+.km-status.ok  { color: #2a9d2a; font-weight: 700; }
+.km-status.err { color: #e00; }
+.km-fallback { display: none; margin-top: 10px; }
+.km-fallback label { font-size: 13px; color: #888; margin-bottom: 6px; display: block; }
+
+/* ── ALLER-RETOUR ── */
+.btn-ar {
+  width: 100%; height: 56px; border-radius: 10px; border: 2px solid #ddd;
+  background: #f5f5f5; font-size: 16px; font-weight: 700; color: #555;
+  cursor: pointer; font-family: inherit; margin-top: 14px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.15s;
+}
+.btn-ar.on { background: #111; border-color: #111; color: #fff; }
+.ar-badge { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: rgba(255,255,255,0.2); }
+.btn-ar:not(.on) .ar-badge { background: #e0e0e0; color: #888; }
+
+/* ── BOUTON AJOUTER ── */
+.btn-add {
+  width: 100%; height: 64px; background: #111; color: #fff;
+  border: none; border-radius: 10px; font-size: 18px; font-weight: 800;
+  cursor: pointer; font-family: inherit; margin-top: 16px;
+}
+.btn-add:active { background: #333; }
+
+/* ── LISTE ── */
+.list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.list-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #888; }
+.empty-msg { text-align: center; padding: 32px 0; font-size: 15px; color: #bbb; }
+
+/* ── TRAJET ── */
+.trip { padding: 14px 0; border-bottom: 1px solid #f0f0f0; }
+.trip:last-child { border-bottom: none; }
+.trip-main { display: flex; align-items: center; gap: 10px; }
+.trip-info { flex: 1; min-width: 0; }
+.trip-route { font-size: 16px; font-weight: 700; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trip-benef { font-size: 15px; font-weight: 600; color: #333; margin-top: 3px; }
+.trip-meta  { font-size: 13px; color: #aaa; margin-top: 2px; }
+.trip-km-badge { font-size: 18px; font-weight: 900; color: #111; white-space: nowrap; flex-shrink: 0; }
+.btn-del {
+  width: 48px; height: 48px; border-radius: 10px; border: 2px solid #eee;
+  background: #fafafa; font-size: 22px; color: #ccc;
+  cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-family: inherit; transition: all 0.15s;
+}
+.btn-del:active { background: #fff0f0; border-color: #e00; color: #e00; }
+.confirm-bar { display: none; margin-top: 10px; gap: 8px; }
+.trip.confirming .trip-route { color: #e00; }
+.trip.confirming .confirm-bar { display: flex; }
+.btn-confirm-del {
+  flex: 1; height: 50px; background: #e00; color: #fff;
+  border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.btn-confirm-cancel {
+  flex: 1; height: 50px; background: #f0f0f0; color: #555;
+  border: none; border-radius: 8px; font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+
+/* ── BARRE TOTAL ── */
+.total-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: #111; color: #fff; padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.total-label { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; }
+.total-count { font-size: 14px; opacity: 0.5; margin-top: 2px; }
+.total-km { font-size: 32px; font-weight: 900; }
+
+/* ── ÉCRAN HISTORIQUE ── */
+.month-nav {
+  background: #fff; margin-bottom: 10px; padding: 16px 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.month-nav-btn {
+  width: 56px; height: 56px; background: #f0f0f0; border: none; border-radius: 10px;
+  font-size: 26px; color: #333; cursor: pointer; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-family: inherit;
+}
+.month-nav-btn:active { background: #ddd; }
+.month-nav-btn:disabled { opacity: 0.25; }
+.month-center { flex: 1; text-align: center; }
+.month-name  { font-size: 20px; font-weight: 800; }
+.month-stats { font-size: 13px; color: #888; margin-top: 4px; }
+.export-row { display: flex; gap: 10px; padding: 16px; }
+.btn-export {
+  flex: 1; height: 56px; border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.btn-export-csv { background: #f0f0f0; color: #444; }
+.btn-export-pdf { background: #111; color: #fff; }
+.btn-export-csv:active { background: #ddd; }
+.btn-export-pdf:active { background: #333; }
+</style>
+</head>
+<body>
+
+<!-- ══════ VUE ACCUEIL ══════ -->
+<div id="viewHome" class="view active">
+
+  <div class="title-bar">
+    <span>Laurent' apps</span>
+    <button class="nav-btn" onclick="showView('History')">Historique</button>
+  </div>
+
+  <div class="section">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="field" style="margin-bottom:0;">
+        <label for="fDate">Date</label>
+        <input type="date" id="fDate">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="fHeure">Heure</label>
+        <input type="time" id="fHeure">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fDepart">Départ</label>
+      <div class="ac-wrap">
+        <input type="text" id="fDepart" placeholder="Ville de départ…" maxlength="60" autocomplete="off" autocorrect="off" autocapitalize="words">
+        <div class="ac-dropdown" id="acDepart"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fBenefDepart">Bénéficiaire au départ <span style="font-weight:400;color:#aaa;">(optionnel)</span></label>
+      <div class="ac-wrap">
+        <input type="text" id="fBenefDepart" placeholder="Nom de la personne…" maxlength="80" autocomplete="off" autocorrect="off" autocapitalize="words">
+        <div class="ac-dropdown" id="acBenefDepart"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fArrivee">Arrivée</label>
+      <div class="ac-wrap">
+        <input type="text" id="fArrivee" placeholder="Ville d'arrivée…" maxlength="60" autocomplete="off" autocorrect="off" autocapitalize="words">
+        <div class="ac-dropdown" id="acArrivee"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="fBenefArrivee">Bénéficiaire à l'arrivée <span style="font-weight:400;color:#aaa;">(optionnel)</span></label>
+      <div class="ac-wrap">
+        <input type="text" id="fBenefArrivee" placeholder="Nom de la personne…" maxlength="80" autocomplete="off" autocorrect="off" autocapitalize="words">
+        <div class="ac-dropdown" id="acBenefArrivee"></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Kilomètres <span style="font-weight:400;color:#aaa;">(calcul automatique)</span></label>
+      <div class="km-display" id="kmDisplay">—</div>
+      <input type="hidden" id="fKm" value="0">
+      <div class="km-status" id="kmStatus"></div>
+      <div class="km-fallback" id="kmFallback">
+        <label>Saisir les km manuellement :</label>
+        <input type="number" id="fKmManual" placeholder="Ex : 25" min="1" max="9999" oninput="onKmManual(this.value)">
+      </div>
+    </div>
+
+    <button class="btn-ar" id="btnAR" onclick="toggleAR()">
+      <span id="arText">Aller simple</span>
+      <span class="ar-badge" id="arBadge"></span>
+    </button>
+
+    <button class="btn-add" onclick="addTrip()">+ Ajouter</button>
+  </div>
+
+  <div class="section">
+    <div class="list-header">
+      <div class="list-title" id="homeMonthLabel">Ce mois</div>
+    </div>
+    <div id="tripList"></div>
+  </div>
+
+  <div class="total-bar" id="totalBar" style="display:none;">
+    <div>
+      <div class="total-label" id="totalLabel">Total</div>
+      <div class="total-count" id="totalCount"></div>
+    </div>
+    <div class="total-km" id="totalKm"></div>
+  </div>
+</div>
+
+<!-- ══════ VUE HISTORIQUE ══════ -->
+<div id="viewHistory" class="view">
+
+  <div class="title-bar">
+    <button class="back-btn" onclick="showView('Home')">‹</button>
+    <span>Historique</span>
+    <span style="width:44px;"></span>
+  </div>
+
+  <div class="month-nav">
+    <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+    <div class="month-center">
+      <div class="month-name"  id="histMonthName"></div>
+      <div class="month-stats" id="histMonthStats"></div>
+    </div>
+    <button class="month-nav-btn" id="btnNextMonth" onclick="changeMonth(1)">›</button>
+  </div>
+
+  <div class="section">
+    <div id="histTripList"></div>
+  </div>
+
+  <div class="export-row">
+    <button class="btn-export btn-export-csv" onclick="exportCSV()">Exporter CSV</button>
+    <button class="btn-export btn-export-pdf" onclick="exportPDF()">Exporter PDF</button>
+  </div>
+  <div style="height:20px;"></div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════
+// VILLES (~45 km autour de Chartres)
+// ══════════════════════════════════════════════
+const VILLES = [
+  'Chartres','Lucé','Luisant','Mainvilliers','Lèves','Champhol','Le Coudray',
+  'Barjouville','Gasville-Oisème','Gellainville','Morancez','Mignières',
+  'Fontenay-sur-Eure','Corancez','Nogent-le-Phaye','Ver-lès-Chartres','Thivars',
+  'Sours','Berchères-les-Pierres','Saint-Prest','Jouy','Amilly',
+  'Fresnay-le-Gilmert','Saint-Luperce','Dangers','Poisvilliers',
+  'Maintenon','Pierres','Hanches','Houx','Mévoisins','Saint-Piat','Gas',
+  'Chartainvilliers','Yermenonville','Bouglainval','Villiers-le-Morhier',
+  'Saint-Martin-de-Nigelles','Soulaires','Meslay-le-Vidame','Fresnay-le-Comte',
+  'La Bourdinière-Saint-Loup','Vitray-en-Beauce','Theuville','Luplante',
+  'Dammarie','Prunay-le-Gillon',"Bailleau-l'Évêque",'Cintray',
+  'Berchères-Saint-Germain','Clévilliers','Coltainville','Challet','Briconville',
+  'Saint-Aubin-des-Bois','Saint-Georges-sur-Eure','Fontaine-la-Guyon',
+  'Bailleau-Armenonville','Écrosnes','Yméray','Houville-la-Branche',
+  'Levesville-la-Chenard','Ouarville','Allonnes','Fains-la-Folie',
+  'Gallardon','Épernon','Auneau','Bleury-Saint-Symphorien','Nogent-le-Roi',
+  'Illiers-Combray','Courville-sur-Eure','Bonneval','Les Villages Vovéens',
+  'Voves','Sainville','Toury','Orgères-en-Beauce','Janville',"Fresnay-l'Évêque",
+  'Nottonville','Saint-Denis-les-Ponts','Alluyes','Dangeau','Marboué',
+  'Conie-Molitard','Denonville','Laons','Le Boullay-Mivoye','Le Boullay-Thierry',
+  'Goussainville','Montreuil','Sainte-Gemme-Moronval','Saussay','Serazereux',
+  'Saint-Laurent-la-Gâtine','Oinville-Saint-Liphard','Tillay-le-Péneux',
+  'Dreux','Vernouillet','Anet','Mézières-en-Drouais','Sorel-Moussel',
+  'Saint-Rémy-sur-Avre','Châteauneuf-en-Thymerais','Brezolles','Senonches',
+  'La Ferté-Vidame','La Loupe','Brou','Châtillon-en-Dunois','Châteaudun',
+  'Cloyes-les-Trois-Rivières','Maillebois','Ablis','Rambouillet','Dourdan',
+  'Patay',"La Chaussée-d'Ivry",'Saint-Lubin-des-Joncherets','Nogent-le-Rotrou',
+  'Thiron-Gardais','Champrond-en-Gâtine','La Chapelle-du-Noyer','Cormainville',
+  'Moléans','Arrou','Saint-Hilaire-sur-Yerre','Authon-du-Perche',
+  'Vieuvicq','Rohaire','Santeuil','Ermenonville-la-Grande','Ermenonville-la-Petite',
+  'Friaize','Saint-Maur-sur-le-Loir','Bailleau-le-Pin','Montharville'
+].filter((v,i,a) => a.indexOf(v) === i).sort((a,b) => a.localeCompare(b,'fr'));
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let trips         = [];
+let freq          = {};
+let geoCache      = {};
+let beneficiaires = [];
+let arOn          = false;
+let pendingDeleteId = null;
+let activeDropdown  = null;
+let historyDate     = new Date();
+
+const MONTH_NAMES = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                     'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+(function init() {
+  try { trips         = JSON.parse(localStorage.getItem('km_trips')         || '[]'); } catch(e){}
+  try { freq          = JSON.parse(localStorage.getItem('km_freq')          || '{}'); } catch(e){}
+  try { geoCache      = JSON.parse(localStorage.getItem('km_geocache')      || '{}'); } catch(e){}
+  try { beneficiaires = JSON.parse(localStorage.getItem('km_beneficiaires') || '[]'); } catch(e){}
+
+  const now = new Date();
+  document.getElementById('fDate').value  = now.toISOString().slice(0,10);
+  document.getElementById('fHeure').value = now.toTimeString().slice(0,5);
+
+  setupAC('Depart');
+  setupAC('Arrivee');
+  setupBenefAC('BenefDepart');
+  setupBenefAC('BenefArrivee');
+  render();
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.ac-wrap')) closeAllDropdowns();
+  });
+})();
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view' + name).classList.add('active');
+  if (name === 'History') { historyDate = new Date(); renderHistory(); }
+  window.scrollTo(0, 0);
+}
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function today()    { return new Date().toISOString().slice(0,10); }
+function uid()      { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function esc(s)     { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(s) { const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; }
+function getYYYYMM(d) { return d.toISOString().slice(0,7); }
+function monthLabel(d){ return `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`; }
+function normalize(s) {
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[-']/g,' ');
+}
+
+function save()              { localStorage.setItem('km_trips',         JSON.stringify(trips)); }
+function saveFreq()          { localStorage.setItem('km_freq',          JSON.stringify(freq)); }
+function saveGeoCache()      { localStorage.setItem('km_geocache',      JSON.stringify(geoCache)); }
+function saveBeneficiaires() { localStorage.setItem('km_beneficiaires', JSON.stringify(beneficiaires)); }
+
+// ══════════════════════════════════════════════
+// CALCUL KM (Nominatim + OSRM)
+// ══════════════════════════════════════════════
+async function geocode(city) {
+  if (geoCache[city]) return geoCache[city];
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', France')}&format=json&limit=1&countrycodes=fr&viewbox=0.7,49.1,2.4,47.7&bounded=0`;
+  const res  = await fetch(url, { headers: {'Accept-Language':'fr'} });
+  const data = await res.json();
+  if (!data.length) throw new Error('Ville introuvable');
+  const coord = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  geoCache[city] = coord;
+  saveGeoCache();
+  return coord;
+}
+
+async function calcDistance() {
+  const depart  = document.getElementById('fDepart').value.trim();
+  const arrivee = document.getElementById('fArrivee').value.trim();
+  if (!depart || !arrivee) return;
+
+  const kmDisplay  = document.getElementById('kmDisplay');
+  const kmStatus   = document.getElementById('kmStatus');
+  const kmFallback = document.getElementById('kmFallback');
+
+  document.getElementById('fKm').value    = '0';
+  document.getElementById('fKmManual').value = '';
+  kmFallback.style.display  = 'none';
+  kmDisplay.className       = 'km-display loading';
+  kmDisplay.textContent     = 'Calcul…';
+  kmStatus.className        = 'km-status';
+  kmStatus.textContent      = '';
+
+  try {
+    const [c1, c2] = await Promise.all([geocode(depart), geocode(arrivee)]);
+    const osrm = `https://router.project-osrm.org/route/v1/driving/${c1.lon},${c1.lat};${c2.lon},${c2.lat}?overview=false`;
+    const data = await (await fetch(osrm)).json();
+    if (data.code !== 'Ok') throw new Error('Pas de route');
+    const km = Math.round(data.routes[0].distance / 1000);
+    document.getElementById('fKm').value = km;
+    kmDisplay.className   = 'km-display ok';
+    kmDisplay.textContent = `${km} km`;
+    kmStatus.className    = 'km-status ok';
+    kmStatus.textContent  = 'Calculé automatiquement';
+  } catch(e) {
+    document.getElementById('fKm').value = '0';
+    kmDisplay.className   = 'km-display err';
+    kmDisplay.textContent = '—';
+    kmStatus.className    = 'km-status err';
+    kmStatus.textContent  = 'Calcul impossible — saisir manuellement ci-dessous';
+    kmFallback.style.display = 'block';
+  }
+}
+
+function onKmManual(val) {
+  const km = parseInt(val) || 0;
+  document.getElementById('fKm').value = km;
+  const kmDisplay = document.getElementById('kmDisplay');
+  if (km > 0) {
+    kmDisplay.className   = 'km-display ok';
+    kmDisplay.textContent = `${km} km`;
+    document.getElementById('kmStatus').className   = 'km-status ok';
+    document.getElementById('kmStatus').textContent = 'Saisie manuelle';
+  } else {
+    kmDisplay.className   = 'km-display err';
+    kmDisplay.textContent = '—';
+  }
+}
+
+// ══════════════════════════════════════════════
+// AUTOCOMPLETE VILLES
+// ══════════════════════════════════════════════
+function setupAC(which) {
+  const input = document.getElementById('f' + which);
+  input.addEventListener('focus', () => { closeAllDropdowns(); activeDropdown = which; showDropdown(which, input.value); });
+  input.addEventListener('input', () => { activeDropdown = which; showDropdown(which, input.value); });
+}
+
+function showDropdown(which, val) {
+  const drop = document.getElementById('ac' + which);
+  const q    = normalize(val.trim());
+  let candidates;
+  if (!q) {
+    candidates = [...VILLES].sort((a,b) => {
+      const d = (freq[b]||0)-(freq[a]||0);
+      return d !== 0 ? d : a.localeCompare(b,'fr');
+    }).slice(0,10);
+  } else {
+    candidates = VILLES.filter(v => normalize(v).includes(q)).sort((a,b) => {
+      const aS = normalize(a).startsWith(q), bS = normalize(b).startsWith(q);
+      if (aS !== bS) return aS ? -1 : 1;
+      const d = (freq[b]||0)-(freq[a]||0);
+      return d !== 0 ? d : a.localeCompare(b,'fr');
+    }).slice(0,10);
+  }
+  drop.innerHTML = candidates.length
+    ? candidates.map(v => {
+        const star = (freq[v]||0) > 0 ? '<span class="ac-item-star used">★</span>' : '';
+        return `<div class="ac-item" onmousedown="selectCity('${which}','${v.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${esc(v)}${star}</div>`;
+      }).join('')
+    : '<div class="ac-no-result">Aucun résultat</div>';
+  drop.classList.add('open');
+}
+
+function selectCity(which, val) {
+  document.getElementById('f' + which).value = val;
+  document.getElementById('f' + which).classList.remove('error');
+  closeAllDropdowns();
+  calcDistance();
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.ac-dropdown').forEach(d => d.classList.remove('open'));
+  activeDropdown = null;
+}
+
+// ══════════════════════════════════════════════
+// AUTOCOMPLETE BÉNÉFICIAIRES
+// ══════════════════════════════════════════════
+function setupBenefAC(fieldId) {
+  const input = document.getElementById('f' + fieldId);
+  input.addEventListener('focus', () => showBenefDropdown(fieldId, input.value));
+  input.addEventListener('input', () => showBenefDropdown(fieldId, input.value));
+}
+
+function showBenefDropdown(fieldId, val) {
+  const drop = document.getElementById('ac' + fieldId);
+  if (!beneficiaires.length) { drop.classList.remove('open'); return; }
+  const q = normalize(val.trim());
+  const candidates = beneficiaires.filter(b => !q || normalize(b).includes(q)).slice(0,8);
+  if (!candidates.length) { drop.classList.remove('open'); return; }
+  drop.innerHTML = candidates.map(b =>
+    `<div class="ac-item" onmousedown="selectBenef('${fieldId}','${b.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${esc(b)}</div>`
+  ).join('');
+  drop.classList.add('open');
+}
+
+function selectBenef(fieldId, val) {
+  document.getElementById('f' + fieldId).value = val;
+  document.getElementById('ac' + fieldId).classList.remove('open');
+}
+
+// ══════════════════════════════════════════════
+// ALLER-RETOUR
+// ══════════════════════════════════════════════
+function toggleAR() {
+  arOn = !arOn;
+  document.getElementById('btnAR').classList.toggle('on', arOn);
+  document.getElementById('arText').textContent  = arOn ? 'Aller-retour' : 'Aller simple';
+  document.getElementById('arBadge').textContent = arOn ? '× 2' : '';
+}
+
+// ══════════════════════════════════════════════
+// AJOUTER
+// ══════════════════════════════════════════════
+function addTrip() {
+  closeAllDropdowns();
+  const date         = document.getElementById('fDate').value;
+  const heure        = document.getElementById('fHeure').value;
+  const depart       = document.getElementById('fDepart').value.trim();
+  const arrivee      = document.getElementById('fArrivee').value.trim();
+  const benefDepart  = document.getElementById('fBenefDepart').value.trim();
+  const benefArrivee = document.getElementById('fBenefArrivee').value.trim();
+  const km           = parseInt(document.getElementById('fKm').value) || 0;
+  let ok = true;
+
+  [['fDate',date],['fDepart',depart],['fArrivee',arrivee]].forEach(([id,val]) => {
+    if (!val) { document.getElementById(id).classList.add('error'); ok = false; }
+  });
+  if (km < 1) { document.getElementById('kmDisplay').classList.add('err'); ok = false; }
+  if (!ok) return;
+
+  freq[depart]  = (freq[depart]  || 0) + 1;
+  freq[arrivee] = (freq[arrivee] || 0) + 1;
+  saveFreq();
+
+  [benefDepart, benefArrivee].forEach(b => {
+    if (b && !beneficiaires.includes(b)) {
+      beneficiaires.push(b);
+      beneficiaires.sort((a,b) => a.localeCompare(b,'fr'));
+    }
+  });
+  saveBeneficiaires();
+
+  trips.unshift({ id:uid(), date, heure, depart, arrivee, benefDepart, benefArrivee, km: km*(arOn?2:1), ar:arOn });
+  save();
+  render();
+
+  document.getElementById('fHeure').value          = new Date().toTimeString().slice(0,5);
+  document.getElementById('fDepart').value          = '';
+  document.getElementById('fArrivee').value         = '';
+  document.getElementById('fBenefDepart').value     = '';
+  document.getElementById('fBenefArrivee').value    = '';
+  document.getElementById('fKm').value              = '0';
+  document.getElementById('fKmManual').value        = '';
+  document.getElementById('kmFallback').style.display = 'none';
+  document.getElementById('kmDisplay').className    = 'km-display';
+  document.getElementById('kmDisplay').textContent  = '—';
+  document.getElementById('kmStatus').textContent   = '';
+  document.getElementById('kmStatus').className     = 'km-status';
+  if (arOn) toggleAR();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ══════════════════════════════════════════════
+// SUPPRESSION
+// ══════════════════════════════════════════════
+function askDelete(id) {
+  if (pendingDeleteId && pendingDeleteId !== id) cancelDelete(pendingDeleteId);
+  pendingDeleteId = id;
+  document.querySelector(`[data-id="${id}"]`).classList.add('confirming');
+}
+function cancelDelete(id) {
+  const el = document.querySelector(`[data-id="${id}"]`);
+  if (el) el.classList.remove('confirming');
+  pendingDeleteId = null;
+}
+function confirmDelete(id) {
+  trips = trips.filter(t => t.id !== id);
+  save(); render(); renderHistory(); pendingDeleteId = null;
+}
+
+// ══════════════════════════════════════════════
+// HTML D'UN TRAJET
+// ══════════════════════════════════════════════
+function tripHTML(t) {
+  return `
+  <div class="trip" data-id="${t.id}">
+    <div class="trip-main">
+      <div class="trip-info">
+        <div class="trip-route">${esc(t.depart)} → ${esc(t.arrivee)}</div>
+        ${t.benefDepart  ? `<div class="trip-benef">↳ Départ : ${esc(t.benefDepart)}</div>`  : ''}
+        ${t.benefArrivee ? `<div class="trip-benef">↳ Arrivée : ${esc(t.benefArrivee)}</div>` : ''}
+        <div class="trip-meta">${fmtDate(t.date)}${t.heure?' · '+t.heure:''}${t.ar?' · A/R':''}</div>
+      </div>
+      <div class="trip-km-badge">${t.km} km</div>
+      <button class="btn-del" onclick="askDelete('${t.id}')" aria-label="Supprimer">×</button>
+    </div>
+    <div class="confirm-bar">
+      <button class="btn-confirm-del"    onclick="confirmDelete('${t.id}')">Supprimer</button>
+      <button class="btn-confirm-cancel" onclick="cancelDelete('${t.id}')">Annuler</button>
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════
+// RENDU ACCUEIL (mois courant)
+// ══════════════════════════════════════════════
+function render() {
+  const m          = today().slice(0,7);
+  const monthTrips = trips.filter(t => t.date.startsWith(m));
+  const now        = new Date();
+  const label      = `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+
+  document.getElementById('homeMonthLabel').textContent = label;
+
+  const list = document.getElementById('tripList');
+  const bar  = document.getElementById('totalBar');
+
+  if (!monthTrips.length) {
+    list.innerHTML    = '<div class="empty-msg">Aucun trajet ce mois</div>';
+    bar.style.display = 'none';
+    return;
+  }
+
+  list.innerHTML = monthTrips.map(tripHTML).join('');
+  const total = monthTrips.reduce((s,t) => s+t.km, 0);
+  bar.style.display = 'flex';
+  document.getElementById('totalLabel').textContent = label;
+  document.getElementById('totalCount').textContent = `${monthTrips.length} trajet${monthTrips.length>1?'s':''}`;
+  document.getElementById('totalKm').textContent    = `${total} km`;
+}
+
+// ══════════════════════════════════════════════
+// RENDU HISTORIQUE
+// ══════════════════════════════════════════════
+function changeMonth(delta) {
+  historyDate = new Date(historyDate.getFullYear(), historyDate.getMonth() + delta, 1);
+  renderHistory();
+}
+
+function renderHistory() {
+  const yyyymm     = getYYYYMM(historyDate);
+  const monthTrips = trips.filter(t => t.date.startsWith(yyyymm));
+  const total      = monthTrips.reduce((s,t) => s+t.km, 0);
+
+  document.getElementById('histMonthName').textContent  = monthLabel(historyDate);
+  document.getElementById('histMonthStats').textContent = monthTrips.length
+    ? `${total} km · ${monthTrips.length} trajet${monthTrips.length>1?'s':''}`
+    : 'Aucun trajet';
+
+  const now = new Date();
+  const isCurrent = historyDate.getFullYear() === now.getFullYear() && historyDate.getMonth() === now.getMonth();
+  const isFuture  = historyDate > now;
+  document.getElementById('btnNextMonth').disabled = isCurrent || isFuture;
+
+  const list = document.getElementById('histTripList');
+  list.innerHTML = monthTrips.length
+    ? monthTrips.map(tripHTML).join('')
+    : '<div class="empty-msg">Aucun trajet ce mois</div>';
+}
+
+// ══════════════════════════════════════════════
+// EXPORT CSV (mois affiché dans historique)
+// ══════════════════════════════════════════════
+function exportCSV() {
+  const yyyymm     = getYYYYMM(historyDate);
+  const monthTrips = trips.filter(t => t.date.startsWith(yyyymm));
+  if (!monthTrips.length) return;
+
+  const rows = [['Date','Heure','Départ','Bénéf. départ','Arrivée','Bénéf. arrivée','KM','Aller-retour']];
+  monthTrips.forEach(t => rows.push([
+    fmtDate(t.date), t.heure||'', t.depart, t.benefDepart||'',
+    t.arrivee, t.benefArrivee||'', t.km, t.ar?'Oui':'Non'
+  ]));
+  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `km-${yyyymm}.csv`;
+  a.click();
+}
+
+// ══════════════════════════════════════════════
+// EXPORT PDF (impression navigateur)
+// ══════════════════════════════════════════════
+function exportPDF() {
+  const yyyymm     = getYYYYMM(historyDate);
+  const monthTrips = trips.filter(t => t.date.startsWith(yyyymm));
+  if (!monthTrips.length) return;
+
+  const label = monthLabel(historyDate);
+  const total = monthTrips.reduce((s,t) => s+t.km, 0);
+
+  const rows = monthTrips.map(t => `
+    <tr>
+      <td>${fmtDate(t.date)}</td>
+      <td>${esc(t.heure||'')}</td>
+      <td>${esc(t.depart)}${t.benefDepart?'<br><small>'+esc(t.benefDepart)+'</small>':''}</td>
+      <td>${esc(t.arrivee)}${t.benefArrivee?'<br><small>'+esc(t.benefArrivee)+'</small>':''}</td>
+      <td style="text-align:center">${t.ar?'A/R':'→'}</td>
+      <td style="text-align:right;font-weight:bold">${t.km} km</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
+<title>KM Laurent – ${label}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;margin:24px;color:#111}
+  h1{font-size:20px;margin-bottom:4px}
+  .sub{color:#666;font-size:13px;margin-bottom:20px}
+  table{width:100%;border-collapse:collapse}
+  thead tr{background:#111;color:#fff}
+  th{padding:9px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  td{padding:8px 10px;border-bottom:1px solid #eee;vertical-align:top}
+  small{color:#666;font-size:11px}
+  tr:nth-child(even) td{background:#f9f9f9}
+  .tot td{border-top:2px solid #111;border-bottom:none;font-weight:bold;font-size:14px;padding-top:12px}
+  @media print{@page{margin:15mm}}
+</style></head><body>
+<h1>Frais kilométriques – Laurent</h1>
+<div class="sub">${label} · ${monthTrips.length} trajet${monthTrips.length>1?'s':''}</div>
+<table>
+  <thead><tr>
+    <th>Date</th><th>Heure</th><th>Départ</th><th>Arrivée</th><th>Type</th><th style="text-align:right">KM</th>
+  </tr></thead>
+  <tbody>
+    ${rows}
+    <tr class="tot">
+      <td colspan="5">Total ${label}</td>
+      <td style="text-align:right">${total} km</td>
+    </tr>
+  </tbody>
+</table>
+</body></html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { alert('Autorisez les pop-ups pour générer le PDF'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 400);
+}
+
+// ── SERVICE WORKER ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
