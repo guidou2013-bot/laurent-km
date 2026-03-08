@@ -1,7 +1,7 @@
 {
   "name": "Laurent' apps",
   "short_name": "Laurent KM",
-  "description": "Suivi des kilomètres",
+  "description": "Suivi des kilometres",
   "start_url": "/Laurent-km/",
   "scope": "/Laurent-km/",
   "display": "standalone",
